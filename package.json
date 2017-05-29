@@ -5,6 +5,9 @@
     {
       "name": "Jeremy Whitlock",
       "email": "jcscoobyrs@gmail.com"
+    },
+    {
+      "name": "Tomas Aparicio"
     }
   ],
   "description": "swagger-client is a javascript client for use with swaggering APIs.",
@@ -33,6 +36,7 @@
   "dependencies": {
     "btoa": "^1.1.2",
     "cookiejar": "^2.0.1",
+    "gulp-sourcemaps": "^2.6.0",
     "js-yaml": "^3.3.0",
     "lodash-compat": "^3.5.0",
     "q": "^1.4.1",
