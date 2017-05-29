@@ -28,6 +28,30 @@ var intArrayQP = {
   },
   collectionFormat: 'csv'
 };
+var quantityFD = {
+  in: 'formData',
+  name: 'quantity',
+  type: 'integer',
+  format: 'int32'
+};
+var nameFD = {
+  in: 'formData',
+  name: 'name',
+  type: 'string'
+};
+var langFD = {
+  in: 'formData',
+  name: 'lang',
+  type: 'array',
+  collectionFormat: 'csv'
+};
+var countryFD = {
+  in: 'formData',
+  name: 'country',
+  type: 'array',
+  collectionFormat: 'multi'
+};
+
 
 describe('operations', function () {
   it('should generate a url', function () {
@@ -57,7 +81,7 @@ describe('operations', function () {
     expect(url).toBe('http://localhost/path?quantity=3&weight=100.3');
   });
 
-  it('should generate a url with queryparams array, multi', function () {
+  it('should generate a url with queryparams array, csv', function () {
     var parameters = [
       intArrayQP
     ];
@@ -111,7 +135,7 @@ describe('operations', function () {
       intArray: [3,4,5]
     });
 
-    expect(url).toBe('http://localhost/path?intArray=3\\t4\\t5');
+    expect(url).toBe('http://localhost/path?intArray=3%094%095');
   });
 
   it('should generate a url with queryparams array, spaces', function () {
@@ -134,6 +158,28 @@ describe('operations', function () {
     });
 
     expect(url).toBe('http://localhost/path?intArray=3%204%205');
+  });
+
+  it('should generate a url with queryparams array, multi', function () {
+    var parameters = [
+      {
+        in: 'query',
+        name: 'intArray',
+        type: 'array',
+        items: {
+          type: 'integer',
+          format: 'int32'
+        },
+        collectionFormat: 'multi'
+      }
+    ];
+    var op = new Operation({}, 'http', 'test', 'get', '/path', { parameters: parameters },
+                                   {}, {}, new auth.SwaggerAuthorizations());
+    var url = op.urlify({
+      intArray: [3,4,5]
+    });
+
+    expect(url).toBe('http://localhost/path?intArray=3&intArray=4&intArray=5');
   });
 
   it('should generate a url with queryparams array, brackets', function () {
@@ -223,6 +269,50 @@ describe('operations', function () {
     expect(url).toBe('http://localhost/foo/tony%20tam/bar');
   });
 
+  it('should generate a url with path param with proper escaping, ignoring slashes if told to do so', function () {
+    var parameters = [
+      {
+        in: 'path',
+        name: 'location',
+        type: 'string',
+        'x-escape': false
+      }
+    ];
+    var op = new Operation({}, 'http', 'test', 'get', '/foo/{location}', { parameters: parameters },
+                                   {}, {}, new auth.SwaggerAuthorizations());
+    var url = op.urlify({
+      location: 'qux/baz.txt'
+    });
+
+    expect(url).toBe('http://localhost/foo/qux/baz.txt');
+  });
+
+  it('should generate a url with path param with proper escaping, ignoring slashes if told to do so, with multiple slashes', function () {
+    var parameters = [
+      {
+        in: 'path',
+        name: 'type',
+        type: 'string',
+        'x-escape': false
+      },
+      {
+        in: 'path',
+        name: 'location',
+        type: 'string',
+        'x-escape': false
+      }
+    ];
+    var op = new Operation({}, 'http', 'test', 'get', '/foo/{type}/{location}', { parameters: parameters },
+                                   {}, {}, new auth.SwaggerAuthorizations());
+    var url = op.urlify({
+      type: 'bar/bar',
+      location: 'qux/baz.txt'
+    });
+
+    expect(url).toBe('http://localhost/foo/bar/bar/qux/baz.txt');
+  });
+
+
   it('should generate a url with path param string array', function () {
     var parameters = [
       {
@@ -286,6 +376,39 @@ describe('operations', function () {
     );
 
     expect(url).toBe('http://localhost/2015-01-30');
+  });
+
+  it('should generate a url with empty-fragment removed from path', function () {
+    var parameters = [];
+    var op = new Operation({}, 'http', 'test', 'get', '/foo#', { parameters: parameters },
+                                   {}, {}, new auth.SwaggerAuthorizations());
+    var url = op.urlify();
+
+    expect(url).toBe('http://localhost/foo');
+  });
+
+  it('should generate a url with fragment removed from path', function () {
+    var parameters = [
+      {
+        in: 'path',
+        name: 'name',
+        type: 'string'
+      },
+      {
+        in: 'query',
+        name: 'age',
+        type: 'integer',
+        format: 'int32'
+      }
+    ];
+    var op = new Operation({}, 'http', 'test', 'get', '/foo/{name}#fragment', { parameters: parameters },
+                                   {}, {}, new auth.SwaggerAuthorizations());
+    var url = op.urlify({
+      name: 'tony',
+      age: 42
+    });
+
+    expect(url).toBe('http://localhost/foo/tony?age=42');
   });
 
   it('should get a string array signature', function () {
@@ -510,6 +633,38 @@ describe('operations', function () {
 
   });
 
+  it('should default to application/json if it can', function(){
+
+    // A parent with two consumes and consumes
+    var parent = {
+      produces: [
+        'application/produces',
+        'application/json' // note that application/json /isn't/ the first item
+      ],
+      consumes: [
+        'application/consumes',
+        'application/json'
+      ]
+    };
+
+    var parameters = [ { in: 'body', name: 'josh', type: 'string' } ];
+    var args = { 'parameters': parameters };
+
+    // make sure we have method that has a body payload
+    var op = new Operation(parent, 'http', 'test', 'post', '/path', args,
+                                   {}, {}, new auth.SwaggerAuthorizations());
+
+    // my happy payload...
+    args = {'josh': 'hello'};
+    var opts = {mock: true};
+    var obj = op.execute(args, opts);
+
+    // Check end result of "produces"/"consumes"
+    expect(obj.headers.Accept).toBe('application/json');
+    expect(obj.headers['Content-Type']).toBe('application/json');
+
+  });
+
   it('should default the content-accept header to application/json, as last resort',function() {
     var op = new Operation({}, 'http', 'test', 'get', '/path', {},
                                    {}, {}, new auth.SwaggerAuthorizations());
@@ -552,5 +707,76 @@ describe('operations', function () {
     expect(p.allowableValues.descriptiveValues[1].isDefault).toBe(true); // false is the default
   });
 
-});
+  it('should omit */* warnings', function() {
+    var parameters = [
+      quantityQP
+    ];
+    var op = new Operation({}, 'http', 'test', 'get', '/path', { parameters: parameters },
+                                   {}, {}, new auth.SwaggerAuthorizations());
+    expect(op.matchesAccept('application/json')).toEqual(true);
 
+    expect(op.matchesAccept('text/html')).toEqual(false);
+
+    op.produces.push('*/*');
+    expect(op.matchesAccept('text/html')).toEqual(true);
+    expect(op.matchesAccept('application/json')).toEqual(true);
+
+    op.produces = ['*/*'];
+    expect(op.matchesAccept('text/html')).toEqual(true);
+    expect(op.matchesAccept('application/json')).toEqual(true);
+
+    // no accepts, no produces, no problem!
+    expect(op.matchesAccept()).toEqual(true);
+
+    op.produces = undefined;
+    expect(op.matchesAccept()).toEqual(true);
+    expect(op.matchesAccept('application/json')).toEqual(true);
+  });
+
+  it('should generate a x-www-form-urlencoded body', function() {
+    var parameters = [quantityFD, nameFD];
+    var op = new Operation({}, 'http', 'test', 'get', '/path', { parameters: parameters },
+                                   {}, {}, new auth.SwaggerAuthorizations());
+    expect(op.getBody({}, {name: 'Douglas Adams', quantity: 42}, {})).toEqual('quantity=42&name=Douglas%20Adams');
+  });
+
+  it('should generate a multipart/form-data body with correct strings for array-like values', function () {
+    var parameters = [langFD, countryFD, nameFD];
+    var op = new Operation({}, 'http', 'test', 'post', '/path', { parameters: parameters}, {}, {}, new auth.SwaggerAuthorizations());
+
+    var body = op.getBody({'Content-Type': 'multipart/form-data'}, {lang: ['en', 'de'], country: ['US', 'DE'], name: 'Douglas Adams'}, {});
+
+    expect(body.lang[0]).toBe('en');
+    expect(body.lang[1]).toBe('de');
+
+    console.log(body);
+  });
+
+  // options.timeout
+  it('should use timeout specified on client by default', function () {
+    var parent = {
+      timeout: 1
+    };
+
+    var op = new Operation(parent, 'http', 'test', 'get', '/path', {},
+                                   {}, {}, new auth.SwaggerAuthorizations());
+    var result = op.execute({}, {mock: true});
+
+    expect(result.timeout).toBe(1, 'Operation.execute timeout was not applied from client');
+  });
+  //
+  it('should prefer timeout passed in execute options over client', function () {
+    var parent = {
+      timeout: 1
+    };
+
+    var op = new Operation(parent, 'http', 'test', 'get', '/path', {},
+                                   {}, {}, new auth.SwaggerAuthorizations());
+    var result = op.execute({}, {
+      mock: true,
+      timeout: 2
+    });
+
+    expect(result.timeout).toBe(2, 'Operation.execute timeout was not applied from options');
+  });
+});

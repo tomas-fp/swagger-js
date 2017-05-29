@@ -18,7 +18,7 @@
           "summary": "Find pet by ID",
           "notes": "Returns a pet based on ID",
           "type": "Animals",
-          "nickname": "getPetById",
+          "nickname": "getAnimalsById",
           "authorizations": {},
           "parameters": [
             {
@@ -110,7 +110,8 @@
           "responseMessages": [
             {
               "code": 400,
-              "message": "Invalid ID supplied"
+              "message": "Invalid ID supplied",
+              "responseModel": "VeryBad"
             },
             {
               "code": 404,
@@ -303,7 +304,8 @@
               "description": "Pet object that needs to be added to the store",
               "required": true,
               "type": "Pet",
-              "paramType": "body"
+              "paramType": "body",
+              "defaultValue": "{\n  \"petId\":1234\n}"
             }
           ],
           "responseMessages": [
@@ -336,6 +338,7 @@
               "required": true,
               "type": "string",
               "paramType": "query",
+              "default": "sold",
               "enum": [
                 "available",
                 "pending",
@@ -519,12 +522,15 @@
       "id": "Animals",
       "properties": {
         "cat": {
+          "description": "The cat property",
           "type": "Pet"
         },
         "dog": {
+          "description": "The dog property",
           "type": "Pet"
         },
         "mouse": {
+          "description": "The mouse property",
           "type": "Pet"
         }
       }
@@ -547,6 +553,13 @@
         },
         "phone": {
           "$ref": "Phone"
+        }
+      }
+    },
+    "VeryBad": {
+      "properties": {
+        "message": {
+          "type": "string"
         }
       }
     }
